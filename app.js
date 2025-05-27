@@ -1,53 +1,24 @@
-import { createCanvas, registerFont } from "canvas";
-import sharp from "sharp";
-import path from "path";
-import fs from "fs";
-import { fileURLToPath } from "url";
-import { createRequire } from "module";
-import e from "express";
-// import { json } from "stream/consumers";
-const require = createRequire(import.meta.url);
-const express = require("express");
-const app = express();
-const multer = require("multer")
-const upload = multer({ dest: "upload/" })
-
-
-app.use(express.urlencoded({ extended: true }));
-
-
-app.post("/sendMail",upload.single("file"), (req, res) => {
-  const data = req.file;
-  console.log(data)
-  res.send("Hit the endpoint");
-});
-
-app.listen(3000, () => {
-  console.log("Server running on port 3000");
-});
-
-
-
+require("dotenv").config()
+const { createCanvas, registerFont } = require("canvas");
+const sharp = require("sharp");
+const path = require("path");
+const fs = require("fs");
 const xlsx = require("xlsx");
 const nodemailer = require("nodemailer");
 const fileLocation = "./excelFile/data.xlsx";
 
 
-// // // Create __dirname in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Load and register the custom font
-const fontPath = path.join(__dirname, "./fonts/Armageda.otf");
+const fontPath = path.join(__dirname, "./fonts/Armageda");
 if (fs.existsSync(fontPath)) {
-  registerFont(fontPath, { family: "Armageda Wide" });
+  registerFont(fontPath, { family: "Armageda.ttf" });
 }
 
 
-
 async function generatePass(student) {
-  const templatePath = path.join(__dirname, "../offline data registration/images/ren ticket-template 2-02.png");
-  const outputPath = path.join(__dirname, `../offline data registration/passes/pass-${student.name}-${student.eventName}.png`);
+  const templatePath = path.join(__dirname, "../Ren_Mail-PassGeneration/images/ren ticket-template 2-02.png");
+  const outputPath = path.join(__dirname, `../Ren_Mail-PassGeneration/upload/pass-${student.name}-${student.eventName}.png`);
 
   // Create a canvas for text overlay
   const canvas = createCanvas(1411, 530);
@@ -79,27 +50,71 @@ const jsonData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
 // // //
 
 const sendMail = async (student) => {
-  const outputPath = path.join(__dirname, `../offline data registration/passes/pass-${student.name}-${student.eventName}.png`);
-  console.log(outputPath)
+  const outputPath = path.join(__dirname, `../Ren_Mail-PassGeneration/upload/pass-${student.name}-${student.eventName}.png`);
   const auth = nodemailer.createTransport({
     service: 'gmail',
     secure: false,
     port: 587,
     auth: {
-      user: "yashpreet3.14@gmail.com",
-      pass: 'lrmd imfr pqwq lmxr'
+      user: process.env.EMAIL_ID,
+      pass: process.env.APP_PASSWORD
     }
   });
 
   const reciever = {
-    from: 'yashpreet3.14@gmail.com',
+    from: process.env.EMAIL_ID,
     to: `${student.emailId}`,
-    subject: 'Sending Email using Node.js',
-    text: `mail sent to ${student.name} with email id ${student.emailId}`,
+    subject: 'Event Registration Successful - Renaissance 2025',
+
+    html: `
+    <h1 style="color: #4E99CA">Your Registration for Renaissance 2025 is Confirmed!</h1>
+        
+    <p style="font-size:16px">Hi ${student.name},
+     
+     <br><br>
+     
+     We're excited to confirm your registration for <b>Renaissance</b> 2025! Get ready to be part of an extraordinary celebration of innovation, creativity and technology. This year's theme, Human X AI, will spark new ideas, foster meaningful connections, and create unforgettable memoried, over three action-packed days.
+     
+     <br><br>
+     
+     To help you navigate this incredible experience, we've attached:
+     - The detailed event itinerary so you don't miss any of the exciting sessions and activities.
+     - The JECRC campus map to guide you through the venue with ease.
+    
+     <br><br>
+     
+     Stay updated with the latest announcements and insights by following our official channels:
+     
+     <br><br>
+
+     <b>Renaissance:</b> https://www.instagram.com/jecrcrenaissance?igsh=MW9sc2xiYm9jM3h1MQ==
+     <b>JECRC Foundation:</b> https://www.instagram.com/jecrcfoundationofficial?igsh=MWUweTlwd25oN3M3eA==
+     <b>JECRC Student Council:</b> https://www.instagram.com/jecrc.studentcouncil?igsh=MW9uNGVrdDN5Zm5pbw==
+
+     <br><br>
+
+     For Any Queries, Contact: Dhruv Sharma: +918959332180
+     We can't wait to welcome you to <b>Renaissance</b> 2025-- see you soon!
+
+     <br><br>
+
+     Warm regards,
+     Team <b>Renaissance</b> 2025
+     </p>
+     `,
+
     attachments: [
       {
         filename: `pass-${student.name}-${student.eventName}.png`, // Change this to the actual filename
         path: outputPath // Full path
+      },
+      {
+        filename: "JECRC Campus Map.jpg", // Change this to the actual filename
+        path: "./images/JECRC Campus Map.jpg" // Full path
+      },
+      {
+        filename: "Event Itinerary.jpg", // Change this to the actual filename
+        path: "./images/Event Itinerary.jpg" // Full path
       }
     ]
   };
@@ -117,6 +132,6 @@ const sendMail = async (student) => {
 jsonData.forEach((student) => {
   generatePass(student);
   console.log(`Pass generated for ${student.name}`);
-  // sendMail(student);
-  // console.log(`Mail sent to ${student.name}`);
+  sendMail(student);
+  console.log(`Mail sent to ${student.name}`);
 });
